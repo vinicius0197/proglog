@@ -85,3 +85,26 @@ func (s *segment) Append(record *log_v1.Record) (off uint64, err error) {
 
 	return off, nil
 }
+
+// Read receives an absolute offset and returns a protobuf encoded record
+func (s *segment) Read(off uint64) (record *log_v1.Record, err error) {
+	relativeOffset := off - s.baseOffset
+	record = &log_v1.Record{}
+
+	_, pos, err := s.index.Read(int64(relativeOffset))
+	if err != nil {
+		return nil, err
+	}
+
+	// get the record
+	r, err := s.store.Read(pos)
+	if err != nil {
+		return nil, err
+	}
+
+	if err := proto.Unmarshal(r, record); err != nil {
+		return nil, err
+	}
+
+	return record, nil
+}
