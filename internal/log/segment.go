@@ -108,3 +108,38 @@ func (s *segment) Read(off uint64) (record *log_v1.Record, err error) {
 
 	return record, nil
 }
+
+// IsMaxed returns true if the segment index or store is maxed out
+func (s *segment) IsMaxed() bool {
+	return s.store.size >= s.config.Segment.MaxStoreBytes ||
+		s.index.size >= s.config.Segment.MaxIndexBytes
+}
+
+// Close closes first the index and then the store
+func (s *segment) Close() error {
+	if err := s.index.Close(); err != nil {
+		return err
+	}
+
+	if err := s.store.Close(); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func (s *segment) Remove() error {
+	if err := s.Close(); err != nil {
+		return err
+	}
+
+	if err := os.Remove(s.index.Name()); err != nil {
+		return err
+	}
+
+	if err := os.Remove(s.store.Name()); err != nil {
+		return err
+	}
+
+	return nil
+}
