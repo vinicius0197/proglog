@@ -5,6 +5,9 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+
+	log_v1 "github.com/vinicius0197/proglog/api/v1"
+	"google.golang.org/protobuf/proto"
 )
 
 type segment struct {
@@ -58,4 +61,27 @@ func newSegment(dir string, baseOffset uint64, config Config) (*segment, error) 
 		nextOffset: nextOffset,
 		config:     config,
 	}, nil
+}
+
+// Append coordinates storing data between the store and index
+func (s *segment) Append(record *log_v1.Record) (off uint64, err error) {
+	record.Offset = s.nextOffset
+	serializedRecord, err := proto.Marshal(record)
+	if err != nil {
+		return 0, err
+	}
+
+	_, pos, err := s.store.Append(serializedRecord)
+	if err != nil {
+		return 0, err
+	}
+
+	if err := s.index.Write(uint32(s.nextOffset)-uint32(s.baseOffset), pos); err != nil {
+		return 0, err
+	}
+
+	off = s.nextOffset
+	s.nextOffset++
+
+	return off, nil
 }
