@@ -28,16 +28,13 @@ func newLog(dir string, config Config) (log *Log, err error) {
 	var seg *segment
 
 	if len(matches) == 0 { // fresh new log with no existing segments
+		segments := []*segment{}
 		seg, err = newSegment(dir, config.Segment.InitialOffset, config)
 		if err != nil {
 			return nil, err
 		}
 
-		log = &Log{}
-		log.segments = append(log.segments, seg)
-		log.active = seg
-		log.dir = dir
-		log.config = &config
+		log = buildLog(log, segments, seg, dir, config)
 
 		return log, nil
 	} else { // need to re-load existing segments
@@ -71,11 +68,7 @@ func newLog(dir string, config Config) (log *Log, err error) {
 			currentSegment = lastSegment
 		}
 
-		log = &Log{}
-		log.segments = append(log.segments, existingSegments...)
-		log.active = currentSegment
-		log.dir = dir
-		log.config = &config
+		log = buildLog(log, existingSegments, currentSegment, dir, config)
 
 		return log, nil
 	}
@@ -158,4 +151,28 @@ func (l *Log) Remove() error {
 	}
 
 	return nil
+}
+
+func buildLog(log *Log, existingSegments []*segment, currentSegment *segment, dir string, config Config) *Log {
+	if !contains(existingSegments, currentSegment) {
+		existingSegments = append(existingSegments, currentSegment)
+	}
+
+	log = &Log{}
+	log.segments = append(log.segments, existingSegments...)
+	log.active = currentSegment
+	log.dir = dir
+	log.config = &config
+	return log
+}
+
+// contains checks if a segment is already included in the segments slice
+func contains(segments []*segment, s *segment) bool {
+	for _, seg := range segments {
+		if seg == s {
+			return true
+		}
+	}
+
+	return false
 }
