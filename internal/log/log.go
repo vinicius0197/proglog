@@ -136,11 +136,11 @@ func (l *Log) Read(off uint64) (record *log_v1.Record, err error) {
 
 // Close closes the active segment from the log
 func (l *Log) Close() error {
-	if err := l.active.Close(); err != nil {
-		return err
+	for _, seg := range l.segments {
+		if err := seg.Close(); err != nil {
+			return err
+		}
 	}
-
-	// TODO: need to close other segments, not only active one
 
 	return nil
 }
